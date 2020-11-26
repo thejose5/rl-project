@@ -1,17 +1,26 @@
-## rl-project
+### The rl-project [Video](https://www.youtube.com/watch?v=O2swIIuimZA)
 RL project at WPI for ML (CS 539) class by Prof. Kyumin Lee
 
-## Project Idea/Proposal
-
-## Literature Survey
-
-## Research
-
-## Experiments
+### Project Idea/Proposal [Link](https://github.com/harsh306/rl-project/tree/master/prj_images/docs)
 
 
+### Literature Survey
+Our research is inspired by these two papers.
 
-## About the team
+Progressive GANs [Link](https://arxiv.org/abs/1710.10196)
+
+![Progressive GANs](https://raw.githubusercontent.com/harsh306/rl-project/master/prj_images/progan.png)
+
+Teacher Student Curriculum Learning [Link](https://arxiv.org/pdf/1707.00183.pdf)
+
+![TSCL](https://raw.githubusercontent.com/harsh306/rl-project/master/prj_images/tscl.png)
+
+
+### Experiments
+
+
+
+### About the team
 #### Harsh Nilesh Pathak [[Bio]](https://sites.google.com/view/harshnpathak/research)
 
 Currently, I am Data Scientist at Expedia and also a Ph.D. student at WPI. I am doing my research on continuation methods for Deep Learning Optimization with Prof. Randy Paffenroth.
