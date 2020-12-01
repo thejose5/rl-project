@@ -1,7 +1,7 @@
 import argparse
 import os
 
-from .pacman_model import PacmanModel, PacmanEnvironment
+from .pacman_model import PacmanModel, PacmanTeacherEnvironment
 from .tensorboard_utils import create_summary_writer
 
 
@@ -70,7 +70,7 @@ if __name__ == '__main__':
     model = PacmanModel(args.max_digits, args.hidden_size, args.batch_size, args.invert, args.optimizer_lr, args.clipnorm)
 
     val_dist = curriculum_steps[-1]
-    env = PacmanEnvironment(model, args.train_size, args.val_size, val_dist, writer)
+    env = PacmanTeacherEnvironment(model, args.train_size, args.val_size, val_dist, writer)
 
     for train_dist in curriculum_steps:
         while model.epochs < args.max_timesteps:

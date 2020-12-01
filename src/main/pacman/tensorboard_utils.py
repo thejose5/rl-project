@@ -5,6 +5,7 @@ def create_summary_writer(logdir):
     return tf.summary.FileWriter(logdir)
 
 
+
 def create_summary(tag, value):
     return tf.Summary(value=[tf.Summary.Value(tag=tag, simple_value=value)])
 

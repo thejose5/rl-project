@@ -5,14 +5,14 @@ import os
 import numpy as np
 from collections import deque, defaultdict
 
-from .pacman_model import PacmanModel, PacmanEnvironment
-from .pacman_curriculum import gen_curriculum_baseline, gen_curriculum_naive, gen_curriculum_mixed, gen_curriculum_combined
-from .tensorboard_utils import create_summary_writer, add_summary
+from src.main.pacman.pacman_model import PacmanModel, PacmanTeacherEnvironment
+from src.main.pacman.pacman_curriculum import gen_curriculum_baseline, gen_curriculum_naive, gen_curriculum_mixed, gen_curriculum_combined
+# from src.tensorboard_utils import create_summary_writer, add_summary
 
 class args:
     def __init__(self, run_id, csv_file=None, teacher='sampling',curriculum='combined',policy='egreedy',epsilon=0.1,
-                 temperature=0.0004,bandit_lr=0.1,window_size=10,abs=False,max_timesteps=20000,max_enemies=10,invert=True,
-                 hidden_size=128,batch_size=4096,train_size=40960,val_size=4096,optimizer_lr=0.001,clipnorm=2,logdir='pacman_logs'):
+                 temperature=0.0004,bandit_lr=0.1,window_size=10,abs=False,max_timesteps=20000,max_enemies=5,invert=True,
+                 hidden_size=128,batch_size=4096,train_size=100,val_size=4096,optimizer_lr=0.001,clipnorm=2,logdir='pacman_logs'):
 
         # parser.add_argument('--teacher', choices=['naive', 'online', 'window', 'sampling'], default='sampling')
         # parser.add_argument('--curriculum', choices=['uniform', 'naive', 'mixed', 'combined'], default='combined')
@@ -105,6 +105,7 @@ def estimate_slope(x, y):
 
 class NaiveSlopeBanditTeacher:
     def __init__(self, env, policy, lr=0.1, window_size=10, abs=False, writer=None):
+        print("Using Naive Teacher")
         self.env = env
         self.policy = policy
         self.lr = lr
@@ -119,25 +120,28 @@ class NaiveSlopeBanditTeacher:
             scores = [[] for _ in range(len(self.Q))]
             for i in range(self.window_size):
                 r, train_done, val_done = self.env.step(p)
+
                 if val_done:
                     return self.env.model.epochs
+
                 for a, score in enumerate(r):
                     if not np.isnan(score):
                         scores[a].append(score)
             s = [estimate_slope(list(range(len(sc))), sc) if len(sc) > 1 else 1 for sc in scores]
             self.Q += self.lr * (s - self.Q)
 
-            if self.writer:
-                for i in range(self.env.num_subtasks):
-                    add_summary(self.writer, "Q_values/task_%d" % (i + 1), self.Q[i], self.env.model.epochs)
-                    add_summary(self.writer, "slopes/task_%d" % (i + 1), s[i], self.env.model.epochs)
-                    add_summary(self.writer, "probabilities/task_%d" % (i + 1), p[i], self.env.model.epochs)
+            # if self.writer:
+            #     for i in range(self.env.num_subtasks):
+            #         add_summary(self.writer, "Q_values/task_%d" % (i + 1), self.Q[i], self.env.model.epochs)
+            #         add_summary(self.writer, "slopes/task_%d" % (i + 1), s[i], self.env.model.epochs)
+            #         add_summary(self.writer, "probabilities/task_%d" % (i + 1), p[i], self.env.model.epochs)
 
         return self.env.model.epochs
 
 
 class OnlineSlopeBanditTeacher:
     def __init__(self, env, policy, lr=0.1, abs=False, writer=None):
+        print("Using Online Teacher")
         self.env = env
         self.policy = policy
         self.lr = lr
@@ -150,8 +154,10 @@ class OnlineSlopeBanditTeacher:
         for t in range(num_timesteps):
             p = self.policy(np.abs(self.Q) if self.abs else self.Q)
             r, train_done, val_done = self.env.step(p)
+
             if val_done:
                 return self.env.model.epochs
+
             s = r - self.prevr
 
             # safeguard against not sampling particular action at all
@@ -159,17 +165,18 @@ class OnlineSlopeBanditTeacher:
             self.Q += self.lr * (s - self.Q)
             self.prevr = r
 
-            if self.writer:
-                for i in range(self.env.num_subtasks):
-                    add_summary(self.writer, "Q_values/task_%d" % (i + 1), self.Q[i], self.env.model.epochs)
-                    add_summary(self.writer, "slopes/task_%d" % (i + 1), s[i], self.env.model.epochs)
-                    add_summary(self.writer, "probabilities/task_%d" % (i + 1), p[i], self.env.model.epochs)
+            # if self.writer:
+            #     for i in range(self.env.num_subtasks):
+            #         add_summary(self.writer, "Q_values/task_%d" % (i + 1), self.Q[i], self.env.model.epochs)
+            #         add_summary(self.writer, "slopes/task_%d" % (i + 1), s[i], self.env.model.epochs)
+            #         add_summary(self.writer, "probabilities/task_%d" % (i + 1), p[i], self.env.model.epochs)
 
         return self.env.model.epochs
 
 
 class WindowedSlopeBanditTeacher:
     def __init__(self, env, policy, window_size=10, abs=False, writer=None):
+        print("Using Windowed Teacher")
         self.env = env
         self.policy = policy
         self.window_size = window_size
@@ -183,23 +190,26 @@ class WindowedSlopeBanditTeacher:
             slopes = [estimate_slope(timesteps, scores) if len(scores) > 1 else 1 for timesteps, scores in zip(self.timesteps, self.scores)]
             p = self.policy(np.abs(slopes) if self.abs else slopes)
             r, train_done, val_done = self.env.step(p)
+
             if val_done:
                 return self.env.model.epochs
+
             for a, s in enumerate(r):
                 if not np.isnan(s):
                     self.scores[a].append(s)
                     self.timesteps[a].append(t)
 
-            if self.writer:
-                for i in range(self.env.num_subtasks):
-                    add_summary(self.writer, "slopes/task_%d" % (i + 1), slopes[i], self.env.model.epochs)
-                    add_summary(self.writer, "probabilities/task_%d" % (i + 1), p[i], self.env.model.epochs)
+            # if self.writer:
+            #     for i in range(self.env.num_subtasks):
+            #         add_summary(self.writer, "slopes/task_%d" % (i + 1), slopes[i], self.env.model.epochs)
+            #         add_summary(self.writer, "probabilities/task_%d" % (i + 1), p[i], self.env.model.epochs)
 
         return self.env.model.epochs
 
 
 class SamplingTeacher:
     def __init__(self, env, policy, window_size=10, abs=False, writer=None):
+        print("Using Sampling Teacher")
         self.env = env
         self.policy = policy
         self.window_size = window_size
@@ -218,16 +228,21 @@ class SamplingTeacher:
                     slopes = np.mean(self.dscores, axis=0)
             else:
                 slopes = np.ones(self.env.num_subtasks)
-
+            print("slopes: ",slopes)
             p = self.policy(np.abs(slopes) if self.abs else slopes)
             r, train_done, val_done = self.env.step(p)
+
             if val_done:
                 return self.env.model.epochs
 
             # log delta score
+            print("r: ", r)
+            print("prevr: ", self.prevr)
             dr = r - self.prevr
+            print("dr: ",dr)
             self.prevr = r
             self.dscores.append(dr)
+            print("dscores: ",self.dscores)
 
             # if self.writer:
             #     for i in range(self.env.num_subtasks):
@@ -241,13 +256,12 @@ if __name__ == '__main__':
     args = args(run_id='pacman0')
 
     logdir = os.path.join(args.logdir, args.run_id)
-    writer = create_summary_writer(logdir)
+    # writer = create_summary_writer(logdir)
 
-    model = PacmanModel(args.max_enemies, args.hidden_size, args.batch_size, args.invert, args.optimizer_lr, args.clipnorm)
-    # Check if the variables required are already available in args(). If not, add them. Remove the variables not required.
+    model = PacmanModel(args.max_enemies)
 
-    val_dist = gen_curriculum_baseline(args.max_enemies+1)[-1]
-    env = PacmanEnvironment(model, args.train_size, args.val_size, val_dist, writer)
+    val_dist = gen_curriculum_baseline(args.max_enemies+1)[-1] # This is just a uniform distribution
+    env = PacmanTeacherEnvironment(model, args.train_size, args.val_size, val_dist)  # Provide writer as arg when tensorboard_utils is debugged
 
     if args.teacher != 'curriculum':
         if args.policy == 'egreedy':
@@ -261,13 +275,13 @@ if __name__ == '__main__':
             assert False
 
     if args.teacher == 'naive':
-        teacher = NaiveSlopeBanditTeacher(env, policy, args.bandit_lr, args.window_size, args.abs, writer)
+        teacher = NaiveSlopeBanditTeacher(env, policy, args.bandit_lr, args.window_size, args.abs) # Provide writer as arg when tensorboard_utils is debugged
     elif args.teacher == 'online':
-        teacher = OnlineSlopeBanditTeacher(env, policy, args.bandit_lr, args.abs, writer)
+        teacher = OnlineSlopeBanditTeacher(env, policy, args.bandit_lr, args.abs) # Provide writer as arg when tensorboard_utils is debugged
     elif args.teacher == 'window':
-        teacher = WindowedSlopeBanditTeacher(env, policy, args.window_size, args.abs, writer)
+        teacher = WindowedSlopeBanditTeacher(env, policy, args.window_size, args.abs) # Provide writer as arg when tensorboard_utils is debugged
     elif args.teacher == 'sampling':
-        teacher = SamplingTeacher(env, policy, args.window_size, args.abs, writer)
+        teacher = SamplingTeacher(env, policy, args.window_size, args.abs) # Provide writer as arg when tensorboard_utils is debugged
     else:
         assert False
 
