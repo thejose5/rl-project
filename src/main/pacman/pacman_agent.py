@@ -1,26 +1,17 @@
-import numpy as np
-import keras.backend.tensorflow_backend as backend
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Dropout, Conv2D, MaxPooling2D, Activation, Flatten, LSTM
-from tensorflow.keras.optimizers import Adam
-from keras.callbacks import TensorBoard, EarlyStopping
-import tensorflow as tf
-
-from collections import deque
-import time
 import random
-from tqdm import tqdm
-import os
-from PIL import Image
-import matplotlib.pyplot as plt
-import cv2
 
-from src.custom_models.StackDenseLayer import StackDenseModel
-from src.custom_models.SimpleStackedDenseLayer import SimpleStackedDenseModel
+import cv2
+import matplotlib.pyplot as plt
+import numpy as np
+from PIL import Image
+from tensorflow.keras.layers import Dense, Dropout, Conv2D, MaxPooling2D, Activation, Flatten
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.optimizers import Adam
+
 
 # REWARDS = [] # Temporary. Only for plotting the output
 class Blob:
-# Definitions related to each blob in the environment (walls, enemies, player, food)
+    # Definitions related to each blob in the environment (walls, enemies, player, food).
     def __init__(self, *args):
 
         if len(args) == 1:
