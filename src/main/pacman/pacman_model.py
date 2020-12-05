@@ -10,12 +10,15 @@ import numpy as np
 
 from .tensorboard_utils import add_summary
 from .pacman_agent import PacmanEnv, Blob, PacmanPlayer
+from tqdm import tqdm
+import time
+import random
 
 
 class PacmanModel(PacmanPlayer):
     # Model definitions can be found in pacman_agent.py
     def __init__(self, max_enemies=5, optimizer_lr=0.001, logdir=None):
-        PacmanPlayer.__init__(self,'each')
+        PacmanPlayer.__init__(self,'all')
         self.max_enemies = max_enemies
         self.render_ep = 0 # Renders 1 episode from the subtask list
 
@@ -40,7 +43,7 @@ class PacmanModel(PacmanPlayer):
         print('Problem Set: ', problem_set)
         return problem_set
 
-    def train_epoch(self, train_data, val_data):
+    def train_epoch(self, train_data, val_data, epoch_counter):
     # Takes the problem set and trains the agent over all subtasks in it.
     # Returns rewards for training and val data
         # rewards_list = np.ones(self.max_enemies) * (-np.inf)
@@ -48,7 +51,8 @@ class PacmanModel(PacmanPlayer):
         epoch_history = []
         num_eps = len(train_data)
         num_val_eps = len(val_data)
-        for ep in range(num_eps):
+        # for ep in range(num_eps):
+        for ep in tqdm(range(num_eps), ascii=True, unit='episodes'):
             print("Running Episode No. ", ep," with ",train_data[ep]," enemies")
             env = PacmanEnv(model=self.model, num_enemies=train_data[ep], ACTION_SPACE_SIZE=self.ACTION_SPACE_SIZE)
 
@@ -58,6 +62,7 @@ class PacmanModel(PacmanPlayer):
                 render = True
 
             ep_history, ep_reward = env.runEpisode(render)
+            # print("Episode Reward: ", ep_reward)
 
             [epoch_history.append(hist) for hist in ep_history]
             # We save all reward obtained for a certain subtask in an epoch and later avg them
@@ -75,11 +80,14 @@ class PacmanModel(PacmanPlayer):
 
         ##################### Running validation episodes to find out how well the model performs.######################
         val_rewards_list = [[] for _ in range(self.max_enemies)]
-        for val_ep in range(num_val_eps):
-            env = PacmanEnv(model=self.model, num_enemies=val_data[val_ep], ACTION_SPACE_SIZE=self.ACTION_SPACE_SIZE)
-            _, val_reward = env.runEpisode(render=False)
-            val_rewards_list[val_data[val_ep] - 1].append(val_reward)
-        val_rewards_list = np.mean(val_rewards_list,axis=1)
+        if epoch_counter%10 == 0:
+            for val_ep in range(num_val_eps):
+                env = PacmanEnv(model=self.model, num_enemies=val_data[val_ep], ACTION_SPACE_SIZE=self.ACTION_SPACE_SIZE)
+                _, val_reward = env.runEpisode(render=False)
+                val_rewards_list[val_data[val_ep] - 1].append(val_reward)
+
+            val_rewards_list = [np.mean(i) for i in val_rewards_list] #np.mean(val_rewards_list,axis=1)
+            print("Mean Rewards: ", val_rewards_list)
         ################################################################################################################
 
 
@@ -109,10 +117,10 @@ class PacmanTeacherEnvironment:
     # This function returns the average reward obtained for each subtask (num of enemies) based on the current problem set.
         print("Training on", train_dist)
         train_data = self.model.generate_data(train_dist, self.train_size)
-        reward, val_reward = self.model.train_epoch(train_data, self.val_data)
+        reward, val_reward = self.model.train_epoch(train_data, self.val_data, self.epochs)
 
         train_done = False
-        val_done = all(i>0 for i in [1,2,3])
+        val_done = False #all(i>0 for i in val_reward)
         self.epochs += 1
 
         # if self.writer:

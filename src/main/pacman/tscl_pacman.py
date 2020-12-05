@@ -12,7 +12,7 @@ from src.main.pacman.pacman_curriculum import gen_curriculum_baseline, gen_curri
 class args:
     def __init__(self, run_id, csv_file=None, teacher='sampling',curriculum='combined',policy='egreedy',epsilon=0.1,
                  temperature=0.0004,bandit_lr=0.1,window_size=10,abs=False,max_timesteps=20000,max_enemies=5,invert=True,
-                 hidden_size=128,batch_size=4096,train_size=100,val_size=4096,optimizer_lr=0.001,clipnorm=2,logdir='pacman_logs'):
+                 hidden_size=128,batch_size=4096,train_size=100,val_size=50,optimizer_lr=0.001,clipnorm=2,logdir='pacman_logs'):
 
         # parser.add_argument('--teacher', choices=['naive', 'online', 'window', 'sampling'], default='sampling')
         # parser.add_argument('--curriculum', choices=['uniform', 'naive', 'mixed', 'combined'], default='combined')
@@ -218,7 +218,7 @@ class SamplingTeacher:
         self.dscores = deque(maxlen=window_size)
         self.prevr = np.zeros(self.env.num_subtasks)
 
-    def teach(self, num_timesteps=2000):
+    def teach(self, num_timesteps=20):
         for t in range(num_timesteps):
             # find slopes for each task
             if len(self.dscores) > 0:
@@ -260,7 +260,7 @@ if __name__ == '__main__':
 
     model = PacmanModel(args.max_enemies)
 
-    val_dist = gen_curriculum_baseline(args.max_enemies+1)[-1] # This is just a uniform distribution
+    val_dist = gen_curriculum_baseline(args.max_enemies)[-1] # This is just a uniform distribution
     env = PacmanTeacherEnvironment(model, args.train_size, args.val_size, val_dist)  # Provide writer as arg when tensorboard_utils is debugged
 
     if args.teacher != 'curriculum':

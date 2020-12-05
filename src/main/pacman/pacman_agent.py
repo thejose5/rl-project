@@ -7,6 +7,9 @@ from PIL import Image
 from tensorflow.keras.layers import Dense, Dropout, Conv2D, MaxPooling2D, Activation, Flatten
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.optimizers import Adam
+from tqdm import tqdm
+import time
+import random
 
 
 # REWARDS = [] # Temporary. Only for plotting the output
@@ -167,7 +170,6 @@ class PacmanEnv:
         if self.epsilon > self.MIN_EPSILON:
             self.epsilon *= self.EPSILON_DECAY
             self.epsilon = max(self.MIN_EPSILON, self.epsilon)
-        print("Episode Reward: ",ep_reward)
         # global REWARDS
         # REWARDS.append(ep_reward)
         return ep_history, ep_reward
@@ -224,7 +226,7 @@ class PacmanEnv:
 
 class PacmanPlayer:
     # Definitions related to the student RL agent: model, update function
-    def __init__(self, update_after = 'each', OBSERVATION_SPACE_SIZE = (10, 10, 3), ACTION_SPACE_SIZE = 8,
+    def __init__(self, update_after = 'all', OBSERVATION_SPACE_SIZE = (10, 10, 3), ACTION_SPACE_SIZE = 8,
                  ep_number = 0, RENDER_EVERY = 10000, DISCOUNT = 0.99, BATCH_SIZE = 1000): #Update after: All = all subtasks; Each = each subtask
 
         self.update_after = update_after
@@ -243,19 +245,19 @@ class PacmanPlayer:
     def create_model(self):
         model = Sequential()
 
-        model.add(Conv2D(256, (3, 3),
+        model.add(Conv2D(32, (3, 3),
                          input_shape=self.OBSERVATION_SPACE_SIZE))  # OBSERVATION_SPACE_VALUES = (10, 10, 3) a 10x10 RGB image.
         model.add(Activation('relu'))
         model.add(MaxPooling2D(pool_size=(2, 2)))
         model.add(Dropout(0.2))
 
-        model.add(Conv2D(256, (3, 3)))
+        model.add(Conv2D(32, (3, 3)))
         model.add(Activation('relu'))
         model.add(MaxPooling2D(pool_size=(2, 2)))
         model.add(Dropout(0.2))
 
         model.add(Flatten())  # this converts our 3D feature maps to 1D feature vectors
-        model.add(Dense(64))
+        model.add(Dense(32))
 
         model.add(Dense(self.ACTION_SPACE_SIZE, activation='linear'))  # ACTION_SPACE_SIZE = how many choices (9)
         model.compile(loss="mse", optimizer=Adam(lr=0.001), metrics=['accuracy'])
@@ -265,7 +267,8 @@ class PacmanPlayer:
         rewards_list = []
         total_reward = 0
         epoch_history = []
-        for ep in range(1, num_eps+1):
+        # for ep in range(1, num_eps+1):
+        for ep in tqdm(range(1, num_eps + 1), ascii=True, unit='episodes'):
             print("Running Episode No. ",ep)
             env = PacmanEnv(model=self.model, num_enemies=num_enemies, ACTION_SPACE_SIZE=self.ACTION_SPACE_SIZE)
 
