@@ -8,7 +8,7 @@ import keras.backend as K
 
 import numpy as np
 
-from .tensorboard_utils import add_summary
+from .tensorboard_utils_tf2 import add_summary
 from .pacman_agent import PacmanEnv, Blob, PacmanPlayer
 from tqdm import tqdm
 import time
@@ -24,6 +24,10 @@ class PacmanModel(PacmanPlayer):
 
         self.optimizer_lr = optimizer_lr #Learning Rate
         self.logdir = logdir
+
+        self.epsilon = 0.8
+        self.EPSILON_DECAY = 0.998
+        self.MIN_EPSILON = 0.01
 
         self.epochs = 0
         # self.make_model()
@@ -61,7 +65,9 @@ class PacmanModel(PacmanPlayer):
             # if self.render_ep == ep:
                 render = True
 
-            ep_history, ep_reward = env.runEpisode(render)
+            ep_history, ep_reward = env.runEpisode(render, self.epsilon)
+            if self.epsilon > self.MIN_EPSILON:
+                self.epsilon *= self.EPSILON_DECAY
             # print("Episode Reward: ", ep_reward)
 
             [epoch_history.append(hist) for hist in ep_history]
